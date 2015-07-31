@@ -1,0 +1,18 @@
+#main,
+#body {
+    color: red;
+    left: 22px;
+    text-align: left;
+    left: 22px;
+    background: green;
+    margin: 0 10px 0 3px;
+    color: red;
+    text-align: left;
+    padding: 3px 1px 2px;
+}
+
+@media (min-width: 200px) {
+    .test {
+        float: left
+    }
+}

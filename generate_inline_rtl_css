@@ -1,0 +1,58 @@
+#!/bin/bash
+
+OUTPUT_TO_FILE=1
+
+files=`git diff --name-only --diff-filter=MA HEAD -- *.{css,scss,sass}`
+files_array=(${files//$'\n'/ })
+dirty_files=()
+is_dirty=0
+cmd_path=`git rev-parse --show-toplevel`"/.git/hooks/rtler.pl"
+
+for file in ${files_array[@]}
+do
+	diff=`git diff HEAD $file`
+	rtl_class=".lang_is_rtl"
+	
+	if [[ $files =~ .*\/mobile\/.* ]]
+	then
+		rtl_class=".rtl"
+	fi
+	
+	if [[ !($diff =~ .*$rtl_class.*) ]]
+	then
+		is_dirty=1
+		dirty_files+=($file)
+	fi
+done
+
+if [[ $is_dirty == 1 ]]
+then
+	cmd_prefix=""
+    cmd_postfix=""
+
+	if [[ $OUTPUT_TO_FILE ]]
+	then
+		cmd_postfix="--output"
+	fi
+
+	tput bold && echo "It looks like your commit is missing some RTL love. Add the CSS below to the corresponding files." && tput sgr0
+	echo "Don't forget to take a look at it in RTL first before commiting!"
+
+	for file in ${dirty_files[@]}
+	do
+		class_prefix="--class-prefix=.lang_is_rtl"
+		
+		if [[ $file =~ .*\/mobile\/.* ]]
+		then
+			class_prefix="--class-prefix=.rtl"
+		elif [[ $file =~ .*\/touch2\/.* ]]
+        then
+			class_prefix="--class-prefix=.ar,.he"
+		fi
+
+		simplified_file_name=${file##*/}
+		tput setaf 7 && tput smul && echo -e "\n$simplified_file_name\n"
+		tput setaf 2 && tput rmul && echo -e "`$cmd_path $file --override $cmd_postfix $class_prefix`"
+	done
+
+fi

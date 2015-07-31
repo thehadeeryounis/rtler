@@ -1,0 +1,11 @@
+#!/bin/sh
+
+cmdpath=`git rev-parse --show-toplevel`"/.git/hooks/generate_inline_rtl_css"
+output="`$cmdpath`"
+
+if [ "$output" != "" ]
+then
+	tput setaf 7 && echo "Commit failed due to missing RTL CSS (add --no-verify to bypass)" && echo
+        echo "$output"
+        exit 1
+fi
