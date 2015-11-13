@@ -58,7 +58,7 @@ my %neuteralizers = (
 my %overrides = (
     qw/([\\w-]+)(right|left)([\\w-]+)(width|radius|color|style):\\s*([^;]+|[^\\n]+)/ => '"$1$2$3$4: $neuteralizers{$4}"',
     qw/([\\w-]+)(right|left):\\s*([^;]+|[^\\n]+)/ => '"$1$2: 0"',
-    qw/\\s*(right|left):\\s*([^;]+|[^\\n]+)/ => '"$1: auto"',
+    qw/(\\s*)(right|left):\\s*([^;]+|[^\\n]+)/ => '"$1$2: auto"',
 );
 
 # These are the regexs that do the actual flipping
@@ -69,7 +69,7 @@ my @regexs = (
     qw/(border-)(\\w+):\\s*(\\w+)\\h(\\w+)\\h(\\w+)[\\h;]*/,
     qw/(margin|padding):\\s*(\\w+)\\h(\\w+)\\h(\\w+)\\h(\\w+)/,
     qw/(margin|padding):\\s*(\\w+)\\h(\\w+)\\h(\\w+)[\\h;]*$/,
-    qw/([-\\w:]*)(right|left|ltr|rtl)([-\\w:]*)/ => '"$1$subs{$2}$3"',
+    qw/([-\\w:]*)(right|left|ltr|rtl)([-\\w:]*)/,
 );
 
 # These are the regexs that do the actual flipping
@@ -86,6 +86,7 @@ my @regex_subs = (
 sub process_css {
     my $input_file_text = @_[0];
     my $output_file_text = "";
+
     # This regex matches CSS rules with all preceding comments
     # 
     # Example:
@@ -108,7 +109,8 @@ sub process_css {
         #   2. Selector
         #   3. {
         #   4. The actual CSS
-        my @breakdown = /([^{]+\*\/\s*|\s*\/\/[^\n]+)?([^{}]+)({\s*)([^{}]*)}/;
+        #   5. }
+        my @breakdown = /([^{]+\*\/\s*|\s*\/\/[^\n]+)?([^{}]+?)(\s*{ *\n*)([^{}]+?)(\s*}\s*)/;
 
         # This checks if the rule should be ignored.
         # Possible scenarios:
@@ -157,7 +159,7 @@ sub process_css {
                     }
 
                     if($override_attribute ne $attribute) {
-                        $new_css = $new_css . $override_attribute;
+                        $new_css = $new_css . $override_attribute . "\n";
                     }
                 }
                     
@@ -189,7 +191,7 @@ sub process_css {
                 }
             }
 
-            $output_file_text .= "@breakdown[0]$new_selector@breakdown[2]$new_css\}";
+            $output_file_text .= "@breakdown[0]$new_selector@breakdown[2]$new_css@breakdown[4]";
         }
     }
     return $output_file_text;
