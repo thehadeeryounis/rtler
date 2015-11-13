@@ -56,9 +56,9 @@ my %neuteralizers = (
 );
 
 my %overrides = (
-    qw/(\\s*[\\w-]+)(right|left)([\\w-]+)(width|radius|color|style):\\s*([^;]+|[^\\n]+)/ => '"$1$2$3$4: $neuteralizers{$4}"',
-    qw/\\s*([\\w-]+)(right|left):\\s*([^;]+|[^\\n]+)/ => '"$1$2: 0"',
-    qw/(\\s*)(right|left):\\s*([^;]+|[^\\n]+)/ => '"$1$2: auto"',
+    qw/([\\w-]+)(right|left)([\\w-]+)(width|radius|color|style):\\s*([^;]+|[^\\n]+)/ => '"$1$2$3$4: $neuteralizers{$4}"',
+    qw/([\\w-]+)(right|left):\\s*([^;]+|[^\\n]+)/ => '"$1$2: 0"',
+    qw/\\s*(right|left):\\s*([^;]+|[^\\n]+)/ => '"$1: auto"',
 );
 
 # These are the regexs that do the actual flipping
@@ -69,7 +69,7 @@ my @regexs = (
     qw/(border-)(\\w+):\\s*(\\w+)\\h(\\w+)\\h(\\w+)[\\h;]*/,
     qw/(margin|padding):\\s*(\\w+)\\h(\\w+)\\h(\\w+)\\h(\\w+)/,
     qw/(margin|padding):\\s*(\\w+)\\h(\\w+)\\h(\\w+)[\\h;]*$/,
-    qw/([-\\w:]*)(right|left|ltr|rtl)([-\\w:]*)/,
+    qw/([-\\w:]*)(right|left|ltr|rtl)([-\\w:]*)/ => '"$1$subs{$2}$3"',
 );
 
 # These are the regexs that do the actual flipping
@@ -92,12 +92,12 @@ sub process_css {
     # /*@ignore*/ #main {
     #   font-size: 20px;
     # }
-    my @rules = $input_file_text =~ /(?:\/\*[^*]*\*+(?:[^\/*][^*]*\*+)*\/|\s*\/\/[^\n]+)?(\s*\@media[^{]+{[\s\S]+?}\s*}|[^{}]+{[^{}]*})?/g;
+    my @rules = $input_file_text =~ /(?:\/\*[^*]*\*+(?:[^\/*][^*]*\*+)*\/|\s*\/\/[^\n]+)?(\s*\@(?:keyframe|media|-)[^{]+{[\s\S]+?}\s*}|[^{}]+{[^{}]*})?/g;
 
     RULES:foreach(@rules) {
         # Checks if it is a media query
-        if(/\@media/) {
-            my @breakdown = /(\/\*[^*]*\*+(?:[^\/*][^*]*\*+)*\/|\s*\/\/[^\n]+)?(\s*\@media[^{]+)({\s*)([\s\S]+?})(\s*})/;
+        if(/\@(keyframe|media|-)/) {
+            my @breakdown = /(\/\*[^*]*\*+(?:[^\/*][^*]*\*+)*\/|\s*\/\/[^\n]+)?(\s*\@(?:keyframe|media|-)[^{]+)({\s*)([\s\S]+?})(\s*})/;
 
             $output_file_text .= $1 . $2 . $3 . &process_css($4) . $5;
             next RULES;
@@ -108,8 +108,7 @@ sub process_css {
         #   2. Selector
         #   3. {
         #   4. The actual CSS
-        #   5. }
-        my @breakdown = /([^{]+\*\/\s*|\s*\/\/[^\n]+)?([^{}]+)({)([^{}]*)(?=\n\s*})(\n\s*})/;
+        my @breakdown = /([^{]+\*\/\s*|\s*\/\/[^\n]+)?([^{}]+)({\s*)([^{}]*)}/;
 
         # This checks if the rule should be ignored.
         # Possible scenarios:
@@ -118,10 +117,9 @@ sub process_css {
         #   3. .rtl
         #   4. .ar
         #   5. .he
-        if (@breakdown[0] =~ /\@noflip/ || @breakdown[1] =~ /\.lang_is_rtl|\.ar|\.he|\.rtl/) {
+        if (@breakdown[0] =~ /\@noflip/ || @breakdown[1] =~ /(\.lang_is_rtl|\.ar|\.he|\.rtl)[\s\n,{]+/) {
             next;
         }
-
 
         # This creates an array containing the attributes
         my @attributes = @breakdown[3] =~ /(.+(?=:):(?<=:)[^;}]+;?)/g;
@@ -159,7 +157,7 @@ sub process_css {
                     }
 
                     if($override_attribute ne $attribute) {
-                        $new_css .= $override_attribute . "\n";
+                        $new_css = $new_css . $override_attribute;
                     }
                 }
                     
@@ -189,11 +187,9 @@ sub process_css {
                         $new_selector = "$new_selector$prefix $_";
                     }
                 }
-
-                $new_selector .= " ";
             }
-            
-            $output_file_text .= "@breakdown[0]$new_selector\{\n$new_css@breakdown[4]";
+
+            $output_file_text .= "@breakdown[0]$new_selector@breakdown[2]$new_css\}";
         }
     }
     return $output_file_text;
@@ -208,12 +204,12 @@ sub process_files {
         next if ($file =~ m/^\./);
 
         # Check if folder
-        if( -d ("$dir$file")) {
+        if( -d ("$dir/$file")) {
             #&process_files("$dir$file/");
         } else {
             # ignore RTL CSS files & NON CSS files
             next if ($file =~ m/\.rtl\.css/ or !($file =~ m/\.css/));
-            &process_file($dir.$file);
+            &process_file("$dir/$file");
         }
     }
 
