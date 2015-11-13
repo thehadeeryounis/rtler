@@ -1,10 +1,12 @@
 # rtler
 ### Usage
+To install/uninstall the commit hook for a sepcific repo, then run these commands from within the repo's dir.
+In all cases `rtlr` is installed globally and can be used from anywhere.
 #### Install
 ```
-sudo curl -s -S https://raw.githubusercontent.com/elleestcrimi/rtler/master/install.sh | sh
+sudo ./install.sh
 ```
 #### Uninstall
 ```
-sudo curl -s -S https://raw.githubusercontent.com/elleestcrimi/rtler/master/uninstall.sh | sh
+sudo ./uninstall.sh
 ```

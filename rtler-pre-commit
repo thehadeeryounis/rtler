@@ -1,11 +1,52 @@
-#!/bin/sh
+#!/bin/bash
 
-cmdpath=`git rev-parse --show-toplevel`"/.git/hooks/generate_inline_rtl_css"
-output="`$cmdpath`"
+files=`git diff --name-only --diff-filter=MA HEAD -- *.{css,scss,sass}`
+files_array=(${files//$'\n'/ })
+dirty_files=()
+is_dirty=0
+cmd_path="rtler"
 
-if [ "$output" != "" ]
+for file in ${files_array[@]}
+do
+	diff=`git diff HEAD $file`
+	rtl_class=".lang_is_rtl"
+	
+	if [[ $files =~ .*\/mobile\/.* ]]
+	then
+		rtl_class=".rtl"
+	fi
+	
+	if [[ !($diff =~ .*$rtl_class.*) ]]
+	then
+		is_dirty=1
+		dirty_files+=($file)
+	fi
+done
+
+if [[ $is_dirty == 1 ]]
 then
+	cmd_prefix=""
+	cmd_postfix="--output"
+
 	tput setaf 7 && echo "Commit failed due to missing RTL CSS (add --no-verify to bypass)" && echo
-        echo "$output"
-        exit 1
+	tput bold && echo "It looks like your commit is missing some RTL love. Add the CSS below to the corresponding files." && tput sgr0
+	echo "Don't forget to take a look at it in RTL first before commiting!"
+
+	for file in ${dirty_files[@]}
+	do
+		class_prefix="--class-prefix=.lang_is_rtl"
+		
+		if [[ $file =~ .*\/mobile\/.* ]]
+		then
+			class_prefix="--class-prefix=.rtl"
+		elif [[ $file =~ .*\/touch2\/.* ]]
+        then
+			class_prefix="--class-prefix=.ar,.he"
+		fi
+
+		simplified_file_name=${file##*/}
+		tput setaf 7 && tput smul && echo "\n$simplified_file_name\n"
+		tput setaf 2 && tput rmul && echo "`$cmd_path $file --override $cmd_postfix $class_prefix`"
+	done
+  exit 1
 fi

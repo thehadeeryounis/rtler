@@ -1,31 +1,31 @@
 #!/bin/sh
 
-curl -L -s -S https://raw.githubusercontent.com/elleestcrimi/rtler/master/uninstall.sh | sh
-
 ROOT_PATH="`git rev-parse --show-toplevel`/.git/hooks/"
+CURRENT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+echo "Symlinking rtler script..." 
+ln -sF "$CURRENT_PATH"/rtler /usr/local/bin/rtler
+
+if ! git rev-parse --git-dir > /dev/null 2>&1; then
+  echo "Not inside of any git repo, cannot proceed.\n";
+  exit;
+fi
+
+echo "Symlinking scripts..."
+ln -sF "$CURRENT_PATH"/rtler-pre-commit $ROOT_PATH
 
 cd $ROOT_PATH
 
-echo "Downloading scripts..."
-
-curl -L -s -S https://raw.githubusercontent.com/elleestcrimi/rtler/master/rtler.pl > rtler.pl
-curl -L -s -S https://raw.githubusercontent.com/elleestcrimi/rtler/master/generate_inline_rtl_css > generate_inline_rtl_css
-curl -L -s -S https://raw.githubusercontent.com/elleestcrimi/rtler/master/rtler-pre-commit > rtler-pre-commit
-
 if [ ! -f "pre-commit" ]; then
+  echo "Creating new pre-commit hook..."
 	echo '#!/bin/sh' > pre-commit
+elif ! grep -q 'rtler-pre-commit' 'pre-commit'; then
+  echo "Updating pre-commit hook"
+  string="source `echo $ROOT_PATH`rtler-pre-commit && `echo $ROOT_PATH`rtler-pre-commit"
+  echo $string >> pre-commit 
 fi
 
-echo "Updating pre-commit hook"
-
-string="source `echo $ROOT_PATH`rtler-pre-commit && `echo $ROOT_PATH`rtler-pre-commit"
-
-echo $string >> pre-commit 
-echo "Fixing permissions..."
-
-chmod 777 pre-commit
 chmod 777 rtler-pre-commit
-chmod 777 rtler.pl
-chmod 777 generate_inline_rtl_css
+chmod 777 pre-commit
 
-echo "`tput setaf 2`All done :) Enjoy!"
+echo "`tput setaf 2`All done :) Enjoy!";
