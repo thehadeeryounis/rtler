@@ -6,8 +6,8 @@ files=`git diff --name-only --diff-filter=MA HEAD -- *.{css,scss,sass}`
 files_array=(${files//$'\n'/ })
 dirty_files=()
 is_dirty=0
-cmd_path="rtler"
 ignore_class_prefix='--ignore-class-prefix=ar,he,.lang_is_rtl,.rtl,is_rtl'
+not_notified=1
 
 for file in ${files_array[@]}
 do
@@ -30,19 +30,10 @@ do
 		dirty_files+=($file)
 	fi
 done
-
 if [[ $is_dirty == 1 ]]
 then
-	cmd_prefix=""
-	cmd_postfix="--output"
-
-	tput setaf 7 && echo "Commit failed due to missing RTL CSS (add --no-verify to bypass)" && echo
-	tput bold && echo "It looks like your commit is missing some RTL love. Add the CSS below to the corresponding files." && tput sgr0
-	echo "Don't forget to take a look at it in RTL first before commiting!"
-
 	for file in ${dirty_files[@]}
 	do
-
 		class_prefix="--class-prefix=.lang_is_rtl"
 		
 		if [[ $file =~ .*\/mobile\/.* ]]
@@ -54,8 +45,26 @@ then
 		fi
 
 		simplified_file_name=${file##*/}
-		tput setaf 7 && tput smul && echo "\n$simplified_file_name\n"
-		tput setaf 2 && tput rmul && echo "`$cmd_path $file --override --silent $cmd_postfix $class_prefix $ignore_class_prefix`"
+    
+    output="`rtler $file --output --override --silent $class_prefix $ignore_class_prefix`"
+
+    if [[ ${#output} > 1 ]]
+    then
+      if [[ $not_notified ]]
+      then
+        tput setaf 7 && echo "Commit failed due to missing RTL CSS (add --no-verify to bypass)" && echo
+        tput bold && echo "It looks like your commit is missing some RTL love. Add the CSS below to the corresponding files." && tput sgr0
+        echo "Don't forget to take a look at it in RTL first before commiting!"
+        not_notified=0
+      fi
+
+      tput setaf 7 && tput smul && echo "\n$simplified_file_name\n"
+      tput setaf 2 && tput rmul && echo $output
+    fi
 	done
-  exit 1
+
+  if [ $not_notified == 0 ]
+  then
+    exit 1
+  fi
 fi

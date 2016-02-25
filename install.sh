@@ -21,7 +21,7 @@ if [ ! -f "pre-commit" ]; then
 	echo '#!/bin/sh' > pre-commit
 elif ! grep -q 'rtler-pre-commit' 'pre-commit'; then
   echo "Updating pre-commit hook"
-  string="source `echo $ROOT_PATH`rtler-pre-commit && `echo $ROOT_PATH`rtler-pre-commit"
+  string="`echo $ROOT_PATH`rtler-pre-commit"
   echo $string >> pre-commit 
 fi
 
