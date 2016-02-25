@@ -13,6 +13,9 @@ use Term::ANSIColor;
 #   class-prefix: 
 #     Is a comma seperated string of class names, which the generated selectors are prefixed with
 #
+#   ignore-class-prefix: 
+#     Is a comma seperated string of class names, which will not be flipped
+#
 #   output:
 #     1: Output RTL CSS to console
 #     0: Write RTL CSS to file
@@ -39,7 +42,7 @@ my $staged = 0;
 my $class_prefix = 0;
 my @class_prefixes = [];
 
-GetOptions ("class-prefix=s" => \$class_prefix, "output!" => \$output, "override!" => \$override, , "staged!" => \$staged, "silent!" => \$silent);
+GetOptions ("ignore-class-prefix=s" => \$ignore_class_prefix, "class-prefix=s" => \$class_prefix, "output!" => \$output, "override!" => \$override, , "staged!" => \$staged, "silent!" => \$silent);
 
 my %subs = (
     right => "left",
@@ -83,6 +86,10 @@ my @regex_subs = (
     '"$1$subs{$2}$3"',
 );
 
+if ($ignore_class_prefix) {
+    $ignore_class_prefix =~  s/,/|/g;
+}
+
 sub process_css {
     my $input_file_text = @_[0];
     my $output_file_text = "";
@@ -119,8 +126,22 @@ sub process_css {
         #   3. .rtl
         #   4. .ar
         #   5. .he
-        if (@breakdown[0] =~ /\@noflip/ || @breakdown[1] =~ /(\.lang_is_rtl|\.ar|\.he|\.rtl)[\s\n,{]+/) {
+        my @selectors = @breakdown[1] =~ /([^,]+)(,|{)/gm;
+
+        if (@breakdown[0] =~ /\@noflip/) {
             next;
+        }
+
+        if (not $override and $ignore_class_prefix) {
+            @unignored_selectors = ();
+
+            foreach(@selectors) {
+                if (not /$ignore_class/) {
+                    push @unignored_selectors, $_;
+                }
+            }
+
+            @breakdown[1] = @unignored_selectors.join(',');
         }
 
         # This creates an array containing the attributes
