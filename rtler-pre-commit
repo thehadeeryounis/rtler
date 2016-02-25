@@ -5,10 +5,16 @@ files_array=(${files//$'\n'/ })
 dirty_files=()
 is_dirty=0
 cmd_path="rtler"
+ignore_class_prefix='--ignore-class-prefix=ar,he,.lang_is_rtl,.rtl,is_rtl'
 
 for file in ${files_array[@]}
 do
-	diff=`git diff HEAD $file`
+  if [[ $file =~ .*rtl.* ]]
+  then
+    continue;
+  fi
+
+  diff=`git diff HEAD $file`
 	rtl_class=".lang_is_rtl"
 	
 	if [[ $files =~ .*\/mobile\/.* ]]
@@ -34,6 +40,7 @@ then
 
 	for file in ${dirty_files[@]}
 	do
+
 		class_prefix="--class-prefix=.lang_is_rtl"
 		
 		if [[ $file =~ .*\/mobile\/.* ]]
@@ -46,7 +53,7 @@ then
 
 		simplified_file_name=${file##*/}
 		tput setaf 7 && tput smul && echo "\n$simplified_file_name\n"
-		tput setaf 2 && tput rmul && echo "`$cmd_path $file --override $cmd_postfix $class_prefix`"
+		tput setaf 2 && tput rmul && echo "`$cmd_path $file --override --silent $cmd_postfix $class_prefix $ignore_class_prefix`"
 	done
   exit 1
 fi
